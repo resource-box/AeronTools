@@ -12,7 +12,7 @@
 
 	<groupId>com.hooniegit</groupId>
 	<artifactId>AeronJavaPackage</artifactId>
-	<version>0.0.1</version>
+	<version>0.1.0</version>
 	<description>Demo project for Spring Boot</description>
 
 	<packaging>pom</packaging>

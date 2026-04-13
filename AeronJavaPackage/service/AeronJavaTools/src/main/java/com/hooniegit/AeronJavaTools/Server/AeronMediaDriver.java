@@ -1,14 +1,11 @@
-package com.hooniegit.AeronServer;
+package com.hooniegit.AeronJavaTools.Server;
 
 import io.aeron.driver.MediaDriver;
 import io.aeron.driver.ThreadingMode;
-import jakarta.annotation.PostConstruct;
-import jakarta.annotation.PreDestroy;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
+
 import java.io.File;
 import java.util.concurrent.locks.ReentrantLock;
 
@@ -20,9 +17,6 @@ import java.util.concurrent.locks.ReentrantLock;
 @Component
 public class AeronMediaDriver {
 
-    // Media Driver
-    @Value("${aeron.server.location:aeron-sbe-ipc}")
-    private String location;
     private String aeronDir;
     private MediaDriver mediaDriver;
 
@@ -32,21 +26,14 @@ public class AeronMediaDriver {
     // Logger
     private static final Logger log = LoggerFactory.getLogger(AeronMediaDriver.class);
 
-    @PostConstruct
-    public void init() {
+    public AeronMediaDriver(String location) {
         this.aeronDir = System.getProperty("java.io.tmpdir") + location;
-        startDriver();
-    }
-
-    @PreDestroy
-    public void destroy() {
-        stopDriver();
     }
 
     /**
      * 미디어 드라이버를 시작합니다.
      */
-    private void startDriver() {
+    public void startDriver() {
         // 동시 접근 방지
         lock.lock();
 
@@ -77,7 +64,7 @@ public class AeronMediaDriver {
     /**
      * 미디어 드라이버를 안전하게 종료합니다.
      */
-    private void stopDriver() {
+    public void stopDriver() {
         lock.lock();
         try {
             if (mediaDriver != null) {
@@ -91,10 +78,9 @@ public class AeronMediaDriver {
     }
 
     /**
-     * 주기적으로 드라이버 상태를 확인하고, 비정상일 경우 재시작합니다.
-     * 'aeron.server.monitoring.interval' 속성으로 스케줄링 간격을 설정할 수 있습니다(기본값: 10000ms).
+     * 드라이버 상태를 확인하고, 비정상일 경우 재시작합니다.
+     * @Scheduled 어노테이션을 통한 반복 실행이 권장됩니다.
      */
-    @Scheduled(fixedDelayString = "${aeron.server.monitoring.interval:10000}")
     public void checkHealthAndRestart() {
         boolean isHealthy = false;
 

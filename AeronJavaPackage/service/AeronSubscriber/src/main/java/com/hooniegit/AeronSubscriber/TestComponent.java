@@ -7,8 +7,8 @@ import com.hooniegit.sbe.SingleDataMessageDecoder;
 import jakarta.annotation.PostConstruct;
 import jakarta.annotation.PreDestroy;
 import org.springframework.stereotype.Component;
-
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * 테스트용 컴포넌트입니다.
@@ -19,8 +19,10 @@ public class TestComponent {
     // 앱의 생명주기를 관리하는 플래그
     private final AtomicBoolean keepAppRunning = new AtomicBoolean(true);
     private Thread reconnectThread;
-    private String aeronDir = "aeron-sbe-ipc";
-    private int streamId = 10;
+    private String location = "aeron-sbe-ipc";
+    private int streamId = 11;
+
+    private int count = 0;
 
     @PostConstruct
     private void start() {
@@ -32,7 +34,7 @@ public class TestComponent {
                 try {
                     System.out.println("\n[System] 미디어 드라이버 연결을 시도합니다..."); // TEST
 
-                    try (DataSubscriber subscriber = new DataSubscriber(aeronDir, streamId)) {
+                    try (DataSubscriber subscriber = new DataSubscriber(location, streamId)) {
 
                         // [핵심] 연결 끊김 감지 시 내부 수신 루프 종료 지시
                         subscriber.setOnDisconnected(() -> {
@@ -47,7 +49,18 @@ public class TestComponent {
                         subscriber.startReceiving(new DataMessageListener() {
                             @Override
                             public void onSingleDataReceived(SingleDataMessageDecoder decoder) {
-                                // 단일 데이터 처리
+                                int id = decoder.id();
+                                String value = decoder.value();
+                                String timestamp = decoder.timestamp();
+
+                                count += 1;
+
+                                // 이하에서 데이터 처리
+                                if (count % 100000 == 0) {
+                                    System.out.println("[Received] Timestamp: " + timestamp + " Count: " + count); // TEST
+                                }
+
+                                if (count % 10000000 == 0) count = 0;
                             }
 
                             @Override
@@ -61,7 +74,6 @@ public class TestComponent {
                                 String timestamp = decoder.timestamp();
 
                                 // 이하에서 데이터 처리
-                                System.out.println("[리스트 데이터 처리 완료] 시간: " + timestamp); // TEST
                             }
                         });
                     }
@@ -82,10 +94,8 @@ public class TestComponent {
                 }
             }
         });
-
-        // 메인 스레드(앱) 종료 시 방해되지 않도록 데몬 스레드로 설정
-        reconnectThread.setDaemon(true);
-        reconnectThread.setName("Aeron-Reconnect-Thread");
+        
+        // 반복
         reconnectThread.start();
     }
 

@@ -1,0 +1,7 @@
+spring:
+  application:
+    name: AeronServer
+
+aeron:
+  server:
+    location: aeron-sbe-ipc

@@ -1,9 +1,0 @@
-spring:
-  application:
-    name: AeronServer
-
-aeron:
-  server:
-    location: aeron-sbe-ipc
-    monitoring:
-      interval: 60000

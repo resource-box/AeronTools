@@ -6,12 +6,11 @@ namespace AeronCSharpTools
 {
     internal class Program
     {
-
         private static Random random = new Random();
 
         static void Main(string[] args)
         {
-            //DataPublisher publisher = new DataPublisher(streamId:11);
+            //DataPublisher publisher = new DataPublisher(streamId: 11);
             //publisher.Connect();
 
             //while (true)
@@ -20,10 +19,9 @@ namespace AeronCSharpTools
             //    int id = random.Next();
             //    var value = "Rand_" + id;
             //    publisher.PublishSingleDataMessage(id, value, timestamp);
-
             //}
 
-            byte[] sharedBuffer = new byte[1024 * 1024]; // 어플리케이션이 사용할 공유 메모리
+            byte[] sharedBuffer = new byte[1024 * 1024 * 8]; // 어플리케이션이 사용할 공유 메모리
             int delay = 3000; // Connect() 재시도 delay
             bool keepRunning = true; // false 설정 시 반복문 종료
             while (keepRunning)
@@ -51,7 +49,7 @@ namespace AeronCSharpTools
                             
                             // 이하에서 데이터 처리
                             string timestamp = data.GetTimestamp();
-                            Console.WriteLine(timestamp); // TEST
+                            //Console.WriteLine(timestamp); // TEST
                         };
 
                         subscriber.OnDisconnected = () =>

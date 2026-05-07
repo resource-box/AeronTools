@@ -44,6 +44,9 @@ public class AeronMediaDriver {
                     .aeronDirectoryName(aeronDir)
                     .threadingMode(ThreadingMode.SHARED)
                     .dirDeleteOnStart(true)
+                    // Term Buffer 크기 증가 (기본 1MB -> 16MB)
+                    // 버퍼 크기를 늘려 Publisher의 입력 속도가 빠를 때 발생하는 ADMIN_ACTION 이벤트 빈도를 줄입니다.
+                    .publicationTermBufferLength(16 * 1024 * 1024)
                     // 드라이버 내부에서 발생하는 에러를 감지하기 위한 핸들러 추가
                     .errorHandler(throwable -> log.error("[Standalone] 미디어 드라이버 내부 오류 발생", throwable));
 

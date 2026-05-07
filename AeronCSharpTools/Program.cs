@@ -29,7 +29,8 @@ namespace AeronCSharpTools
                 try
                 {
                     Console.WriteLine("\n[System] 미디어 드라이버 연결을 시도합니다...");
-                    using (var subscriber = new DataSubscriber(streamId: 10, sharedBuffer: sharedBuffer))
+                    //using (var subscriber = new DataSubscriber(aeronDir: System.IO.Path.GetTempPath() + "aeron-sbe-ipc-test", streamId: 10, targetIp: "0.0.0.0", targetPort: 11111, sharedBuffer: sharedBuffer))
+                    using (var subscriber = new DataSubscriber(aeronDir: System.IO.Path.GetTempPath() + "aeron-sbe-ipc-test", streamId: 10, sharedBuffer: sharedBuffer))
                     {
                         // 데이터 수신 콜백
                         subscriber.OnListDataReceived = (data) =>

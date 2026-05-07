@@ -1,3 +1,9 @@
 spring:
   application:
     name: AeronPublisher
+
+aeron:
+  server:
+    location: aeron-sbe-ipc
+    host: localhost
+    port: 11111

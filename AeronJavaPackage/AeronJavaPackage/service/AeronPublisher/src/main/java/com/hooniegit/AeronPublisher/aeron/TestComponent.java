@@ -1,8 +1,10 @@
-package com.hooniegit.AeronPublisher;
+package com.hooniegit.AeronPublisher.aeron;
 
 import com.hooniegit.AeronJavaTools.Common.TagData;
 import com.hooniegit.AeronJavaTools.Publisher.DataPublisher;
+import com.hooniegit.AeronPublisher.config.PublisherConfig;
 import jakarta.annotation.PostConstruct;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
@@ -16,10 +18,25 @@ import java.util.List;
 public class TestComponent {
 
     private final List<TagData<Double>> dataList = new ArrayList<>();
-    private final DataPublisher dataPublisher = new DataPublisher("aeron-sbe-ipc", 10);
+    private DataPublisher dataPublisher;
+
+    @Autowired
+    private PublisherConfig config;
 
     @PostConstruct
     public void test() throws InterruptedException {
+
+        String LOCATION = config.getLocation();
+        String HOST = config.getHost();
+        int PORT = config.getPort();
+        int STREAM_ID = 10;
+
+        if (HOST != null && !"NULL".equalsIgnoreCase(HOST)) {
+            this.dataPublisher = new DataPublisher(LOCATION, STREAM_ID, HOST, PORT);
+        } else {
+            this.dataPublisher = new DataPublisher(LOCATION, STREAM_ID);
+        }
+
         this.dataPublisher.connect();
         Thread.sleep(3000);
 

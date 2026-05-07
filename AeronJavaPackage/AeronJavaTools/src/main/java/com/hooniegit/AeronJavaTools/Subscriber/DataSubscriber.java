@@ -54,10 +54,10 @@ public class DataSubscriber implements AutoCloseable {
     }
 
     // UDP 전용 생성자
-    public DataSubscriber(final String location, int streamId, String targetIp, int targetPort) {
+    public DataSubscriber(final String location, int streamId, String listenIp, int listenPort) {
         this.aeronDir = System.getProperty("java.io.tmpdir") + "/" + location;
         this.streamId = streamId;
-        this.channel = "aeron:udp?endpoint=" + targetIp + ":" + targetPort;
+        this.channel = "aeron:udp?endpoint=" + listenIp + ":" + listenPort;
     }
 
     /**

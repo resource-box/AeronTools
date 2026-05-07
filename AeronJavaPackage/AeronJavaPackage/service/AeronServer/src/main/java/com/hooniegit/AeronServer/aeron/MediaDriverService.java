@@ -15,7 +15,6 @@ import org.springframework.stereotype.Component;
 public class MediaDriverService {
 
     // Media Driver
-    private String location;
     private AeronMediaDriver mediaDriver;
 
     @Autowired
@@ -23,8 +22,7 @@ public class MediaDriverService {
 
     @PostConstruct
     public void init() {
-        this.location = config.getLocation();
-        this.mediaDriver = new AeronMediaDriver(this.location);
+        this.mediaDriver = new AeronMediaDriver(config.getLocation());
         this.mediaDriver.startDriver();
     }
 

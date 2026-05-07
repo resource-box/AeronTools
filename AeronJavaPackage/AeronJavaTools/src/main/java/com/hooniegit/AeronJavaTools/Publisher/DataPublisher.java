@@ -9,6 +9,7 @@ import io.aeron.Aeron;
 import io.aeron.Publication;
 
 import org.agrona.concurrent.UnsafeBuffer;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -156,6 +157,50 @@ public class DataPublisher {
     }
 
     /**
+     * 단일 데이터 메시지를 SBE로 인코딩하여 논블로킹으로 전송합니다. (구독자 없음/백프레셔 발생 시 즉시 포기)
+     * @param id Tag ID
+     * @param value Tag Value
+     * @param timestamp Tag Timestamp (예: "2024-06-01T12:00:00.000")
+     */
+    public void fireSingleDataMessage(int id, String value, String timestamp) {
+        if (!isConnected || publication.isClosed()) {
+            log.warn("[Java Publisher: {}] 전송 실패: 미디어 드라이버 연결 확인 필요", streamId);
+            connect();
+
+            if (!isConnected) {
+                log.warn("[Java Publisher: {}] 재연결 실패. 데이터를 전송하지 못했습니다.", streamId);
+                return;
+            }
+        }
+
+        EncodingResources resources = TL_RESOURCES.get();
+
+        resources.singleEncoder.wrapAndApplyHeader(resources.buffer, 0, resources.headerEncoder);
+        resources.singleEncoder.id(id)
+                .value(value)
+                .timestamp(timestamp);
+
+        int msgLength = MessageHeaderEncoder.ENCODED_LENGTH + resources.singleEncoder.encodedLength();
+        final long result = publication.offer(resources.buffer, 0, msgLength);
+
+        if (result < 0L) {
+            if (result == Publication.NOT_CONNECTED) {
+                log.warn("[Java Publisher: {}] [Fire] 구독자가 없어 데이터가 전송되지 않았습니다.", streamId);
+            } else if (result == Publication.BACK_PRESSURED) {
+                log.warn("[Java Publisher: {}] [Fire] 백프레셔로 인해 데이터가 전송되지 않았습니다.", streamId);
+            } else if (result == Publication.ADMIN_ACTION) {
+                log.warn("[Java Publisher: {}] [Fire] 관리자 조치로 인해 데이터가 전송되지 않았습니다.", streamId);
+            } else if (result == Publication.CLOSED) {
+                log.error("[Java Publisher: {}] Publication이 닫혔습니다.", streamId);
+                this.isConnected = false;
+            } else if (result == Publication.MAX_POSITION_EXCEEDED) {
+                log.error("[Java Publisher: {}] Publication 포지션 한계에 도달했습니다.", streamId);
+                this.isConnected = false;
+            }
+        }
+    }
+
+    /**
      * id 배열 및 value 배열을 사용해서 리스트 데이터 메시지를 SBE로 인코딩하여 전송합니다.
      * @param ids id 데이터 배열
      * @param values value 데이터 배열
@@ -226,6 +271,58 @@ public class DataPublisher {
                     break;
                 }
                 Thread.yield();
+            }
+        }
+    }
+
+    /**
+     * id 배열 및 value 배열을 사용해서 리스트 데이터 메시지를 SBE로 인코딩하여 논블로킹으로 전송합니다. (구독자 없음/백프레셔 발생 시 즉시 포기)
+     * @param ids id 데이터 배열
+     * @param values value 데이터 배열
+     * @param size 배열 크기
+     * @param timestamp 리스트 내 TagData 공통 Timestamp (예: "2024-06-01T12:00:00.000")
+     */
+    public void fireListDataMessage(int[] ids, double[] values, int size, String timestamp) {
+        if (!this.isConnected || this.publication.isClosed()) {
+            log.warn("[Java Publisher: {}] 전송 실패: 미디어 드라이버 연결 확인 필요", this.streamId);
+            this.connect();
+            if (!this.isConnected) {
+                log.warn("[Java Publisher: {}] 재연결 실패. 데이터를 전송하지 못했습니다.", this.streamId);
+                return;
+            }
+        }
+
+        EncodingResources resources = (EncodingResources)TL_RESOURCES.get();
+        resources.listEncoder.wrapAndApplyHeader(resources.buffer, 0, resources.headerEncoder);
+
+        ListDataMessageEncoder.EntriesEncoder entries = resources.listEncoder.entriesCount(size);
+        for(int i = 0; i < size; i++) {
+            entries.next().id(ids[i]).value(values[i]);
+        }
+        resources.listEncoder.timestamp(timestamp);
+
+        int msgLength = MessageHeaderEncoder.ENCODED_LENGTH + resources.listEncoder.encodedLength();
+
+        if (msgLength > publication.maxMessageLength()) {
+            log.error("[Java Publisher: {}] 메시지 크기({} bytes)가 Aeron 허용 한계({})를 초과했습니다. 리스트 분할 전송이 필요합니다.", streamId, msgLength, publication.maxMessageLength());
+            return;
+        }
+
+        final long result = publication.offer(resources.buffer, 0, msgLength);
+
+        if (result < 0L) {
+            if (result == Publication.NOT_CONNECTED) {
+                log.warn("[Java Publisher: {}] [Fire] 구독자가 없어 데이터가 전송되지 않았습니다.", streamId);
+            } else if (result == Publication.BACK_PRESSURED) {
+                log.warn("[Java Publisher: {}] [Fire] 백프레셔로 인해 데이터가 전송되지 않았습니다.", streamId);
+            } else if (result == Publication.ADMIN_ACTION) {
+                log.warn("[Java Publisher: {}] [Fire] 관리자 조치로 인해 데이터가 전송되지 않았습니다.", streamId);
+            } else if (result == Publication.CLOSED) {
+                log.error("[Java Publisher: {}] Publication이 닫혔습니다.", streamId);
+                this.isConnected = false;
+            } else if (result == Publication.MAX_POSITION_EXCEEDED) {
+                log.error("[Java Publisher: {}] Publication 포지션 한계에 도달했습니다.", streamId);
+                this.isConnected = false;
             }
         }
     }
@@ -302,6 +399,59 @@ public class DataPublisher {
                     break;
                 }
                 Thread.yield();
+            }
+        }
+    }
+
+    /**
+     * 리스트 데이터 메시지를 SBE로 인코딩하여 논블로킹으로 전송합니다. (구독자 없음/백프레셔 발생 시 즉시 포기)
+     * @param dataList TagData 객체 리스트
+     * @param timestamp 리스트 내 TagData 공통 Timestamp (예: "2024-06-01T12:00:00.000")
+     */
+    public void fireListDataMessage(List<TagData<Double>> dataList, String timestamp) {
+        if (!isConnected || publication.isClosed()) {
+            log.warn("[Java Publisher: {}] 전송 실패: 미디어 드라이버 연결 확인 필요", streamId);
+            connect();
+
+            if (!isConnected) {
+                log.warn("[Java Publisher: {}] 재연결 실패. 데이터를 전송하지 못했습니다.", streamId);
+                return;
+            }
+        }
+
+        EncodingResources resources = TL_RESOURCES.get();
+
+        resources.listEncoder.wrapAndApplyHeader(resources.buffer, 0, resources.headerEncoder);
+        ListDataMessageEncoder.EntriesEncoder entries = resources.listEncoder.entriesCount(dataList.size());
+        for (TagData<Double> data : dataList) {
+            entries.next()
+                    .id(data.getId())
+                    .value(data.getValue());
+        }
+        resources.listEncoder.timestamp(timestamp);
+
+        int msgLength = MessageHeaderEncoder.ENCODED_LENGTH + resources.listEncoder.encodedLength();
+
+        if (msgLength > publication.maxMessageLength()) {
+            log.error("[Java Publisher: {}] 메시지 크기({} bytes)가 Aeron 허용 한계({})를 초과했습니다. 리스트 분할 전송이 필요합니다.", streamId, msgLength, publication.maxMessageLength());
+            return;
+        }
+
+        final long result = publication.offer(resources.buffer, 0, msgLength);
+
+        if (result < 0L) {
+            if (result == Publication.NOT_CONNECTED) {
+                log.warn("[Java Publisher: {}] [Fire] 구독자가 없어 데이터가 전송되지 않았습니다.", streamId);
+            } else if (result == Publication.BACK_PRESSURED) {
+                log.warn("[Java Publisher: {}] [Fire] 백프레셔로 인해 데이터가 전송되지 않았습니다.", streamId);
+            } else if (result == Publication.ADMIN_ACTION) {
+                log.warn("[Java Publisher: {}] [Fire] 관리자 조치로 인해 데이터가 전송되지 않았습니다.", streamId);
+            } else if (result == Publication.CLOSED) {
+                log.error("[Java Publisher: {}] Publication이 닫혔습니다.", streamId);
+                this.isConnected = false;
+            } else if (result == Publication.MAX_POSITION_EXCEEDED) {
+                log.error("[Java Publisher: {}] Publication 포지션 한계에 도달했습니다.", streamId);
+                this.isConnected = false;
             }
         }
     }

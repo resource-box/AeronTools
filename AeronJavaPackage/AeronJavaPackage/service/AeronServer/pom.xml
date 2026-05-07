@@ -12,11 +12,6 @@
     <packaging>jar</packaging>
 
     <dependencies>
-        <dependency>
-            <groupId>com.hooniegit</groupId>
-            <artifactId>AeronJavaTools</artifactId>
-            <version>0.1.0</version>
-        </dependency>
     </dependencies>
 
 </project>
